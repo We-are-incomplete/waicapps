@@ -18,11 +18,11 @@ export default function HomePage() {
 
   // ✨ 改修：各モードに個別のサブアイコン画像（subIcon1～5）を割り当て、暇つぶしモードを追加
   const modes = [
-    { id: 1, name: 'トークン', icon: '/images/subIcon1.png' },
-    { id: 2, name: 'トーナメント表', icon: '/images/subIcon2.png' },
-    { id: 3, name: 'プレイヤーデータ', icon: '/images/subIcon3.png' },
-    { id: 4, name: '確率計算', icon: '/images/subIcon4.png' },
-    { id: 5, name: 'ミニゲーム', icon: '/images/subIcon5.png' },
+    { id: 1, name: 'トークン', icon: '/Images/subIcon1.png' },
+    { id: 2, name: 'トーナメント表', icon: '/Images/subIcon2.png' },
+    { id: 3, name: 'プレイヤーデータ', icon: '/Images/subIcon3.png' },
+    { id: 4, name: '確率計算', icon: '/Images/subIcon4.png' },
+    { id: 5, name: 'ミニゲーム', icon: '/Images/subIcon5.png' },
   ];
 
   // 🔄 起動時に現在のクッキーから状態チェック
@@ -135,7 +135,7 @@ export default function HomePage() {
         {/* ブランドロゴエリア */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px', paddingBottom: '12px', borderBottom: '1px solid #f0f0f0' }}>
           <img 
-            src="/images/Icon.png" 
+            src="/Images/Icon.png" 
             alt="Waic App Icon" 
             style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'contain' }} 
             onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}

@@ -86,16 +86,25 @@ export default function Player() {
     setNewEventDate(today);
   }, []);
 
-  // 🔑 通常の対戦データ登録
+  // 📝 matchTypeを装飾するヘルパー関数
+  const decorateMatchType = (matchType: string) => {
+    if (matchType === '対戦') return '対戦⚔️';
+    if (matchType === '観戦') return '観戦👀';
+    if (matchType === '情報' || matchType === '事前情報' || matchType === '事後情報') return '情報🔎';
+    return matchType;
+  };
+
+  //  通常の対戦データ登録
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!regDate || !regOpponent.trim() || !regSummary.trim()) return;
     setIsSubmitting(true);
     try {
+      const decoratedMatchType = decorateMatchType(regMatchType);
       const res = await fetch('/api/players', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date: regDate.replace(/-/g, '/'), matchType: regMatchType, opponent: regOpponent.trim(), summary: regSummary.trim(), note: regNote.trim() }),
+        body: JSON.stringify({ date: regDate.replace(/-/g, '/'), matchType: decoratedMatchType, opponent: regOpponent.trim(), summary: regSummary.trim(), note: regNote.trim() }),
       });
       if (res.ok) {
         setRegOpponent(''); setRegSummary(''); setRegNote('');
@@ -127,10 +136,11 @@ export default function Player() {
     if (!confirm('⚠️ この対戦記録の変更を確定してもよろしいですか？')) return;
 
     try {
+      const decoratedLog = { ...editingLog, matchType: decorateMatchType(editingLog.matchType) };
       const res = await fetch('/api/players', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...editingLog, date: editingLog.date.replace(/-/g, '/') }),
+        body: JSON.stringify({ ...decoratedLog, date: decoratedLog.date.replace(/-/g, '/') }),
       });
       if (res.ok) {
         setEditingLog(null);
@@ -278,7 +288,7 @@ export default function Player() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <label style={{ fontSize: '13px', fontWeight: 'bold' }}>記録タイプ</label>
             <select value={editingLog.matchType} onChange={(e) => setEditingLog({ ...editingLog, matchType: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #ced4da', backgroundColor: '#fff' }}>
-              <option value="対戦">対戦</option><option value="観戦">観戦</option><option value="事前情報">事前情報</option><option value="事後情報">事後情報</option>
+              <option value="対戦">対戦</option><option value="観戦">観戦</option><option value="情報">情報</option>
             </select>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -315,7 +325,7 @@ export default function Player() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#495057' }}>記録タイプ</label>
             <select value={regMatchType} onChange={(e) => setRegMatchType(e.target.value)} style={{ width: '100%', padding: '11px', borderRadius: '8px', border: '1px solid #ced4da', fontSize: '15px', backgroundColor: '#fff' }}>
-              <option value="対戦">対戦</option><option value="観戦">観戦</option><option value="事前情報">事前情報</option><option value="事後情報">事後情報</option>
+              <option value="対戦">対戦</option><option value="観戦">観戦</option><option value="情報">情報</option>
             </select>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
