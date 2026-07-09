@@ -46,7 +46,12 @@ export default function LoginPage() {
     <div style={{ minHeight: '100vh', backgroundColor: '#f1f3f5', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif' }}>
       <div style={{ backgroundColor: '#fff', width: '100%', maxWidth: '360px', padding: '32px 24px', borderRadius: '24px', boxShadow: '0 8px 24px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
         <div style={{ textAlign: 'center' }}>
-          <span style={{ fontSize: '40px' }}>🔐</span>
+          <img
+            src="/Images/Icon.png"
+            alt="App Icon"
+            style={{ width: '48px', height: '48px', borderRadius: '10px', objectFit: 'contain', margin: '0 auto' }}
+            onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+          />
           <h2 style={{ fontSize: '20px', fontWeight: 'bold', margin: '10px 0 4px', color: '#222' }}>Waic Calculator</h2>
           <p style={{ fontSize: '13px', color: '#888', margin: 0 }}>パスワードを入力してください</p>
         </div>
