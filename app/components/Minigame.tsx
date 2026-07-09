@@ -466,26 +466,26 @@ export default function Minigame() {
               <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#888', paddingLeft: '2px' }}>タップしてヒントを開放：</span>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                <div onClick={() => !isResolved && setRevealed({ ...revealed, category: true })} style={{ padding: '10px', borderRadius: '10px', border: '1px dashed #ccc', backgroundColor: revealed.category ? '#fff' : (isResolved ? '#e8f5e9' : '#f1f3f5'), cursor: isResolved ? 'default' : 'pointer', transition: 'all 0.2s', textAlign: 'center' }}>
+                <div onClick={() => !isResolved && setRevealed({ ...revealed, category: true })} style={{ padding: '10px', borderRadius: '10px', border: '1px dashed #ccc', backgroundColor: isResolved ? (revealed.category ? '#fff' : '#e8f5e9') : (revealed.category ? '#fff' : '#f1f3f5'), cursor: isResolved ? 'default' : 'pointer', transition: 'all 0.2s', textAlign: 'center' }}>
                   <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#777', display: 'block', marginBottom: '2px' }}>カード種別</span>
                   <span style={{ fontSize: '13px', fontWeight: 'bold', color: revealed.category || isResolved ? '#d97706' : '#bbb' }}>{revealed.category || isResolved ? formatCategory(currentCard.cardId) : '❓'}</span>
                 </div>
-                <div onClick={() => !isResolved && setRevealed({ ...revealed, cardType: true })} style={{ padding: '10px', borderRadius: '10px', border: '1px dashed #ccc', backgroundColor: revealed.cardType ? '#fff' : (isResolved ? '#e8f5e9' : '#f1f3f5'), cursor: isResolved ? 'default' : 'pointer', transition: 'all 0.2s', textAlign: 'center' }}>
+                <div onClick={() => !isResolved && setRevealed({ ...revealed, cardType: true })} style={{ padding: '10px', borderRadius: '10px', border: '1px dashed #ccc', backgroundColor: isResolved ? (revealed.cardType ? '#fff' : '#e8f5e9') : (revealed.cardType ? '#fff' : '#f1f3f5'), cursor: isResolved ? 'default' : 'pointer', transition: 'all 0.2s', textAlign: 'center' }}>
                   <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#777', display: 'block', marginBottom: '2px' }}>タイプ</span>
                   <span style={{ fontSize: '13px', fontWeight: 'bold', color: revealed.cardType || isResolved ? '#e53e3e' : '#bbb' }}>{revealed.cardType || isResolved ? (currentCard.type || 'なし') : '❓'}</span>
                 </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
-                <div onClick={() => !isResolved && setRevealed({ ...revealed, idFirstChar: true })} style={{ padding: '10px', borderRadius: '10px', border: '1px dashed #ccc', backgroundColor: revealed.idFirstChar ? '#fff' : (isResolved ? '#e8f5e9' : '#f1f3f5'), cursor: isResolved ? 'default' : 'pointer', transition: 'all 0.2s', textAlign: 'center' }}>
+                <div onClick={() => !isResolved && setRevealed({ ...revealed, idFirstChar: true })} style={{ padding: '10px', borderRadius: '10px', border: '1px dashed #ccc', backgroundColor: isResolved ? (revealed.idFirstChar ? '#fff' : '#e8f5e9') : (revealed.idFirstChar ? '#fff' : '#f1f3f5'), cursor: isResolved ? 'default' : 'pointer', transition: 'all 0.2s', textAlign: 'center' }}>
                   <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#777', display: 'block', marginBottom: '2px' }}>収録弾</span>
                   <span style={{ fontSize: '13px', fontWeight: 'bold', color: revealed.idFirstChar || isResolved ? '#0070f3' : '#bbb', wordBreak: 'break-all' }}>{revealed.idFirstChar || isResolved ? formatFirstChar(currentCard.cardId) : '❓'}</span>
                 </div>
-                <div onClick={() => !isResolved && setRevealed({ ...revealed, idNumber: true })} style={{ padding: '10px', borderRadius: '10px', border: '1px dashed #ccc', backgroundColor: revealed.idNumber ? '#fff' : (isResolved ? '#e8f5e9' : '#f1f3f5'), cursor: isResolved ? 'default' : 'pointer', transition: 'all 0.2s', textAlign: 'center' }}>
+                <div onClick={() => !isResolved && setRevealed({ ...revealed, idNumber: true })} style={{ padding: '10px', borderRadius: '10px', border: '1px dashed #ccc', backgroundColor: isResolved ? (revealed.idNumber ? '#fff' : '#e8f5e9') : (revealed.idNumber ? '#fff' : '#f1f3f5'), cursor: isResolved ? 'default' : 'pointer', transition: 'all 0.2s', textAlign: 'center' }}>
                   <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#777', display: 'block', marginBottom: '2px' }}>ID番号</span>
                   <span style={{ fontSize: '13px', fontWeight: 'bold', color: revealed.idNumber || isResolved ? '#0070f3' : '#bbb', wordBreak: 'break-all' }}>{revealed.idNumber || isResolved ? formatIdNumber(currentCard.cardId) : '❓'}</span>
                 </div>
-                <div onClick={() => !isResolved && setRevealed({ ...revealed, onPlayEffect: true })} style={{ padding: '10px', borderRadius: '10px', border: '1px dashed #ccc', backgroundColor: revealed.onPlayEffect ? '#fff' : (isResolved ? '#e8f5e9' : '#f1f3f5'), cursor: isResolved ? 'default' : 'pointer', transition: 'all 0.2s', textAlign: 'center' }}>
+                <div onClick={() => !isResolved && setRevealed({ ...revealed, onPlayEffect: true })} style={{ padding: '10px', borderRadius: '10px', border: '1px dashed #ccc', backgroundColor: isResolved ? (revealed.onPlayEffect ? '#fff' : '#e8f5e9') : (revealed.onPlayEffect ? '#fff' : '#f1f3f5'), cursor: isResolved ? 'default' : 'pointer', transition: 'all 0.2s', textAlign: 'center' }}>
                   <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#777', display: 'block', marginBottom: '2px' }}>登場時効果</span>
                   <span style={{ fontSize: '13px', fontWeight: 'bold', color: revealed.onPlayEffect || isResolved ? '#805ad5' : '#bbb', wordBreak: 'break-all' }}>{revealed.onPlayEffect || isResolved ? formatOnPlayEffect(currentCard.text) : '❓'}</span>
                 </div>
@@ -499,7 +499,7 @@ export default function Minigame() {
                       <div 
                         key={idx} 
                         onClick={() => !isResolved && setRevealed({ ...revealed, tags: revealed.tags.map((t, i) => i === idx ? true : t) })}
-                        style={{ padding: '6px 12px', borderRadius: '20px', border: '1px solid #dee2e6', backgroundColor: isTagRevealed ? '#fff' : (isResolved ? '#e8f5e9' : '#f8f9fa'), cursor: isResolved ? 'default' : 'pointer', fontSize: '12px', fontWeight: 'bold', color: isTagRevealed || isResolved ? '#2e7d32' : '#999' }}
+                        style={{ padding: '6px 12px', borderRadius: '20px', border: '1px solid #dee2e6', backgroundColor: isResolved ? (isTagRevealed ? '#fff' : '#e8f5e9') : (isTagRevealed ? '#fff' : '#f8f9fa'), cursor: isResolved ? 'default' : 'pointer', fontSize: '12px', fontWeight: 'bold', color: isTagRevealed || isResolved ? '#2e7d32' : '#999' }}
                       >
                         {isTagRevealed || isResolved ? `# ${tag}` : `🏷️ タグヒント ${idx + 1}`}
                       </div>
@@ -512,7 +512,7 @@ export default function Minigame() {
                 onClick={() => { if (!isResolved && revealed.textRevealCount < textChunks.length) { setRevealed({ ...revealed, textRevealCount: revealed.textRevealCount + 1 }); } }}
                 style={{
                   padding: '12px', borderRadius: '10px', border: '1px dashed #ccc',
-                  backgroundColor: revealed.textRevealCount > 0 ? '#fff' : (isResolved ? '#e8f5e9' : '#f1f3f5'),
+                  backgroundColor: isResolved ? (revealed.textRevealCount > 0 ? '#fff' : '#e8f5e9') : (revealed.textRevealCount > 0 ? '#fff' : '#f1f3f5'),
                   cursor: isResolved || revealed.textRevealCount >= textChunks.length ? 'default' : 'pointer',
                   transition: 'all 0.2s', minHeight: '80px'
                 }}
