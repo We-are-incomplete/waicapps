@@ -52,7 +52,12 @@ export default function Minigame() {
   const fetchCards = () => {
     setLoadingCards(true);
     setCardsError(null);
-    fetch('/api/players?type=cards')
+    fetch('/api/players?type=cards', {
+      headers: {
+        // ヘッダーにAPIキーを追加
+        'X-API-KEY': process.env.NEXT_PUBLIC_API_KEY || ''
+      }
+    })
       .then((res) => {
         if (!res.ok) throw new Error('カードデータの取得に失敗しました');
         return res.json();

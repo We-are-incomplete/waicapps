@@ -1,9 +1,15 @@
 // app/api/players/route.ts
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
-import { cookies } from 'next/headers';
 
-const AUTH_TOKEN = 'waic_authenticated_session_token';
+/**
+ * APIキーを検証する認証関数
+ * @param request - NextRequestオブジェクト
+ */
+function authenticateRequest(request: NextRequest) {
+  const apiKey = request.headers.get('X-API-KEY');
+  return apiKey === process.env.NEXT_PUBLIC_API_KEY;
+}
 
 function getGoogleAuth() {
   return new google.auth.JWT({
@@ -14,10 +20,8 @@ function getGoogleAuth() {
 }
 
 // 🟩 GET: 対戦履歴、イベント名、またはカードリストを取得
-export async function GET(request: Request) {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('auth_token');
-  if (!token || token.value !== AUTH_TOKEN) {
+export async function GET(request: NextRequest) {
+  if (!authenticateRequest(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -78,10 +82,10 @@ export async function GET(request: Request) {
 }
 
 // 🟨 POST: 新規追加
-export async function POST(request: Request) {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('auth_token');
-  if (!token || token.value !== AUTH_TOKEN) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+export async function POST(request: NextRequest) {
+  if (!authenticateRequest(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
   try {
     const body = await request.json();
@@ -118,10 +122,10 @@ export async function POST(request: Request) {
 }
 
 // 🟦 PUT: ✨ 新設：特定行のデータを上書き（編集）
-export async function PUT(request: Request) {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('auth_token');
-  if (!token || token.value !== AUTH_TOKEN) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+export async function PUT(request: NextRequest) {
+  if (!authenticateRequest(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
   try {
     const body = await request.json();
@@ -155,10 +159,10 @@ export async function PUT(request: Request) {
 }
 
 // 🟥 DELETE: ✨ 新設：指定された行番号の内容を完全に消去
-export async function DELETE(request: Request) {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('auth_token');
-  if (!token || token.value !== AUTH_TOKEN) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+export async function DELETE(request: NextRequest) {
+  if (!authenticateRequest(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
   try {
     const { searchParams } = new URL(request.url);
