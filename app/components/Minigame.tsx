@@ -35,7 +35,7 @@ export default function Minigame() {
   // ✨ 選択肢に label (表示する文字列) と detail (回答後に表示する補足情報) を持たせるように拡張
   const [fcState, setFcState] = useState<{
     status: 'playing' | 'answered';
-    type: 1 | 2 | 3;
+    type: 1 | 2 | 3 | 4;
     questionText: string;
     contentText: string;
     options: { label: string; detail: string }[];
@@ -222,13 +222,29 @@ export default function Minigame() {
   const generateFcQuestion = (allCards: CardItem[]) => {
     if (allCards.length === 0) return;
 
+    // Type 3用のフィルタ (Artist)
     const artistCards = allCards.filter(c => getCategoryChar(c.cardId) === 'A');
-    const availableTypes = artistCards.length >= 4 ? [1, 2, 3] : [1, 2];
-    const type = availableTypes[Math.floor(Math.random() * availableTypes.length)] as 1 | 2 | 3;
+    // Type 4用のフィルタ (AまたはSカテゴリで、【●●】××形式のもの)
+    const type4Cards = allCards.filter(c => {
+      const char = getCategoryChar(c.cardId);
+      return (char === 'A' || char === 'S') && /^【(.*?)】(.*)$/.test(c.cardName);
+    });
+
+    // 確率調整 (30%, 30%, 20%, 20%)
+    const rand = Math.random();
+    let type: 1 | 2 | 3 | 4;
+    
+    if (rand < 0.3) type = 1;
+    else if (rand < 0.6) type = 2;
+    else if (rand < 0.8 && artistCards.length >= 4) type = 3;
+    else if (rand < 1.0 && type4Cards.length >= 4) type = 4;
+    else type = 1; // フォールバック
 
     let correctCard: CardItem;
     if (type === 3) {
       correctCard = artistCards[Math.floor(Math.random() * artistCards.length)];
+    } else if (type === 4) {
+      correctCard = type4Cards[Math.floor(Math.random() * type4Cards.length)];
     } else {
       correctCard = allCards[Math.floor(Math.random() * allCards.length)];
     }
@@ -258,10 +274,8 @@ export default function Minigame() {
         if (fallback.length > 0) shuffledWrongs.push(fallback[Math.floor(Math.random() * fallback.length)]);
         else break;
       }
-      const rawOptions = [correctCard, ...shuffledWrongs].sort(() => 0.5 - Math.random());
-      
       // ✨ 回答後に正体（効果テキスト）を表示できるよう detail にセット
-      options = rawOptions.map(c => ({ label: c.cardName, detail: c.text || '(効果なし)' }));
+      options = [correctCard, ...shuffledWrongs].sort(() => 0.5 - Math.random()).map(c => ({ label: c.cardName, detail: c.text || '(効果なし)' }));
       
     } else if (type === 2) {
       questionText = 'このカードの効果は何？';
@@ -307,10 +321,8 @@ export default function Minigame() {
         if (fallback.length > 0) shuffledWrongs.push(fallback[Math.floor(Math.random() * fallback.length)]);
         else break;
       }
-      const rawOptions = [correctCard, ...shuffledWrongs].sort(() => 0.5 - Math.random());
-      
       // ✨ 回答後に正体（カード名）を表示できるよう detail にセット
-      options = rawOptions.map(c => ({ label: c.text || '(効果なし)', detail: c.cardName }));
+      options = [correctCard, ...shuffledWrongs].sort(() => 0.5 - Math.random()).map(c => ({ label: c.text || '(効果なし)', detail: c.cardName }));
       
     } else if (type === 3) {
       questionText = 'このカードの登場時効果は何？';
@@ -328,6 +340,47 @@ export default function Minigame() {
       } else {
         correctAnswer = 'なし';
       }
+
+    } else if (type === 4) {
+      // Type 4: 【●●】を当てる
+      const match = correctCard.cardName.match(/^【(.*?)】(.*)$/);
+      const bracketPart = match![1]; 
+      const suffixPart = match![2];
+      
+      questionText = '二つ名としてあり得るのは？';
+      contentText = `【？】${suffixPart}`;
+      correctAnswer = bracketPart;
+
+      const wrongOptions: { label: string; detail: string }[] = [];
+      
+      // 【】の中身と、その出典元のカード名をペアで保持するMapを作成
+      const uniqueBracketsMap = new Map<string, string>();
+      type4Cards.forEach(c => {
+        const b = c.cardName.match(/^【(.*?)】/)?.[1];
+        if (b && !uniqueBracketsMap.has(b)) {
+          uniqueBracketsMap.set(b, c.cardName);
+        }
+      });
+      
+      // シャッフルして誤答を探す
+      const shuffledBrackets = Array.from(uniqueBracketsMap.keys()).sort(() => 0.5 - Math.random());
+      for (const b of shuffledBrackets) {
+        const label = b;
+        if (label === correctAnswer) continue;
+        
+        // 存在しないカード名であることを確認
+        const combinedName = `【${label}】${suffixPart}`;
+        const cardExists = allCards.some(c => c.cardName === combinedName);
+        
+        // 誤答として成立し、かつまだ選択肢に追加されていない場合
+        if (!cardExists && !wrongOptions.some(opt => opt.label === label)) {
+          const sourceCardName = uniqueBracketsMap.get(b) || '';
+          wrongOptions.push({ label, detail: `「${sourceCardName}」` });
+        }
+        if (wrongOptions.length === 3) break;
+      }
+      
+      options = [ { label: correctAnswer, detail: correctCard.cardName }, ...wrongOptions ].sort(() => 0.5 - Math.random());
     }
 
     setFcState({
