@@ -234,9 +234,9 @@ export default function Minigame() {
     const rand = Math.random();
     let type: 1 | 2 | 3 | 4;
     
-    if (rand < 0.3) type = 1;
-    else if (rand < 0.6) type = 2;
-    else if (rand < 0.8 && artistCards.length >= 4) type = 3;
+    if (rand < 0.28) type = 1;
+    else if (rand < 0.56) type = 2;
+    else if (rand < 0.78 && artistCards.length >= 4) type = 3;
     else if (rand < 1.0 && type4Cards.length >= 4) type = 4;
     else type = 1; // フォールバック
 
