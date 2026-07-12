@@ -2,6 +2,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
 
+const WARNING_HEADER = { 'X-Usage-Warning': 'This API is for internal use only. Unauthorized access is prohibited.' };
+
 /**
  * APIキーを検証する認証関数
  * @param request - NextRequestオブジェクト
@@ -22,7 +24,7 @@ function getGoogleAuth() {
 // 🟩 GET: 対戦履歴、イベント名、またはカードリストを取得
 export async function GET(request: NextRequest) {
   if (!authenticateRequest(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: WARNING_HEADER });
   }
 
   const { searchParams } = new URL(request.url);
@@ -42,7 +44,7 @@ export async function GET(request: NextRequest) {
         date: row[0] || '',
         eventName: row[1] || '',
       }));
-      return NextResponse.json({ data: events });
+      return NextResponse.json({ data: events }, { headers: WARNING_HEADER });
 
     } else if (fetchType === 'cards') {
       // 🃏 ✨ 新設：Cardlist シートから取得
@@ -58,7 +60,7 @@ export async function GET(request: NextRequest) {
         tag: row[5] || '',
       })).filter(card => card.cardId.trim() || card.cardName.trim()); // 空行を除外
 
-      return NextResponse.json({ data: cards });
+      return NextResponse.json({ data: cards }, { headers: WARNING_HEADER });
 
     } else {
       // ⚔️ 通常の対戦履歴シートから取得
@@ -73,18 +75,18 @@ export async function GET(request: NextRequest) {
         summary: row[4] || '',
         note: row[5] || '',
       }));
-      return NextResponse.json({ data: formattedData });
+      return NextResponse.json({ data: formattedData }, { headers: WARNING_HEADER });
     }
   } catch (error: any) {
     console.error('Google Sheets GET Error:', error);
-    return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500, headers: WARNING_HEADER });
   }
 }
 
 // 🟨 POST: 新規追加
 export async function POST(request: NextRequest) {
   if (!authenticateRequest(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: WARNING_HEADER });
   }
 
   try {
@@ -101,7 +103,7 @@ export async function POST(request: NextRequest) {
         valueInputOption: 'USER_ENTERED',
         requestBody: { values: [[date, eventName]] },
       });
-      return NextResponse.json({ success: true });
+      return NextResponse.json({ success: true }, { headers: WARNING_HEADER });
     } 
     
     const { date, matchType, opponent, summary, note } = body;
@@ -115,16 +117,16 @@ export async function POST(request: NextRequest) {
       requestBody: { values: [[timestamp, date, matchType, opponent, summary, note]] },
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true }, { headers: WARNING_HEADER });
   } catch (error: any) {
-    return NextResponse.json({ error: 'Failed to record data' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to record data' }, { status: 500, headers: WARNING_HEADER });
   }
 }
 
 // 🟦 PUT: ✨ 新設：特定行のデータを上書き（編集）
 export async function PUT(request: NextRequest) {
   if (!authenticateRequest(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: WARNING_HEADER });
   }
 
   try {
@@ -152,16 +154,16 @@ export async function PUT(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true }, { headers: WARNING_HEADER });
   } catch (error: any) {
-    return NextResponse.json({ error: 'Failed to update data' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to update data' }, { status: 500, headers: WARNING_HEADER });
   }
 }
 
 // 🟥 DELETE: ✨ 新設：指定された行番号の内容を完全に消去
 export async function DELETE(request: NextRequest) {
   if (!authenticateRequest(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: WARNING_HEADER });
   }
 
   try {
@@ -169,7 +171,7 @@ export async function DELETE(request: NextRequest) {
     const targetType = searchParams.get('targetType');
     const rowIndex = parseInt(searchParams.get('rowIndex') || '0');
 
-    if (!rowIndex) return NextResponse.json({ error: 'Invalid Row Index' }, { status: 400 });
+    if (!rowIndex) return NextResponse.json({ error: 'Invalid Row Index' }, { status: 400, headers: WARNING_HEADER });
 
     const auth = getGoogleAuth();
     const sheets = google.sheets({ version: 'v4', auth });
@@ -183,8 +185,8 @@ export async function DELETE(request: NextRequest) {
       range: targetType === 'event' ? `events!A${rowIndex}:B${rowIndex}` : `A${rowIndex}:F${rowIndex}`,
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true }, { headers: WARNING_HEADER });
   } catch (error: any) {
-    return NextResponse.json({ error: 'Failed to delete data' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to delete data' }, { status: 500, headers: WARNING_HEADER });
   }
 }
