@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 
-type MinigameState = 'menu' | 'random' | 'cardGuessBlind' | 'cardGuess4Choice';
+export type MinigameState = 'menu' | 'random' | 'cardGuessBlind' | 'cardGuess4Choice';
 
 interface CardItem {
   cardId: string;
