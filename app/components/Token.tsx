@@ -229,7 +229,7 @@ export default function Token() {
           style={{
             flex: 1,
             height: '75px',
-            fontSize: '16px',
+            fontSize: '24px',
             color: '#d32f2f',
             backgroundColor: 'transparent',
             border: '2px solid #ef9a9a',
