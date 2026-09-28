@@ -21,6 +21,9 @@ export default function Token() {
   const [diceResults, setDiceResults] = useState<number[]>([]);
   const [isRolling, setIsRolling] = useState<boolean>(false);
 
+  // 🎛️ スライドスイッチ用の状態（初期値を true: ON に設定）
+  const [isTokenActive, setIsTokenActive] = useState<boolean>(true);
+
   // ✨ 各列（colIndex）に対応するトークン画像のパス定義
   const tokenImages = [
     '/Images/Tokena.png', // 魔力α (colIndex: 0)
@@ -64,6 +67,7 @@ export default function Token() {
       setColumnsState(initialTokens);
       setDiceResults([]);
       setDiceCount(1);
+      setIsTokenActive(true); // リセット時は初期値のONに戻す
     }
   };
 
@@ -76,14 +80,13 @@ export default function Token() {
         gridTemplateColumns: '1fr 1fr 1fr 2fr', 
         gap: '8px',
         backgroundColor: '#fff',
-        padding: '16px 8px', // ✨ テキスト削除に伴い、上下の余白バランスを調整
+        padding: '16px 8px',
         borderRadius: '16px',
         boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
       }}>
         {/* 単列セット (旧: 魔力α, 魔力β, 魔力Ω) */}
         {[0, 1, 2].map((colIndex) => (
           <div key={colIndex} style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
-            {/* ✨ 修正：テキストラベルを削除 */}
             {columnsState[colIndex].map((isOn, btnIndex) => (
               <button
                 key={btnIndex}
@@ -105,7 +108,6 @@ export default function Token() {
         ))}
 
         {/* 2列が1つになったセット (旧: VOL) */}
-        {/* ✨ 修正：背景色（#f0f4f8）と点線（dashed border）、パディング、見出しをすべて削除 */}
         <div style={{ gridColumn: '4', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <div style={{ display: 'flex', gap: '12px', width: '100%', justifyContent: 'center' }}>
             {[3, 4].map((colIndex) => (
@@ -185,25 +187,66 @@ export default function Token() {
         </div>
       </div>
 
-      {/* 🔄 リセットボタン */}
-      <button
-        onClick={handleResetAll}
-        style={{
-          width: '100%',
-          padding: '12px',
-          fontSize: '14px',
-          fontWeight: 'bold',
-          color: '#d32f2f',
-          backgroundColor: 'transparent',
-          border: '2px solid #ef9a9a',
-          borderRadius: '16px',
-          cursor: 'pointer',
-          transition: 'all 0.2s',
-          textAlign: 'center'
-        }}
-      >
-        🔄 リセット
-      </button>
+      {/* 🎛️ スライドスイッチ & 🔄 リセットボタン（高さ85px、4:1の比率で横並び） */}
+      <div style={{ display: 'flex', gap: '8px', width: '100%', alignItems: 'center' }}>
+        
+        {/* 左側 4/5：スライドスイッチ */}
+        <div 
+          onClick={() => setIsTokenActive(!isTokenActive)}
+          style={{
+            flex: 4,
+            height: '75px',
+            aspectRatio: '239 / 65',
+            backgroundImage: `url(${isTokenActive ? '/Images/Tokenl_on.png' : '/Images/Tokenl_off.png'})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            borderRadius: '24px',
+            cursor: 'pointer',
+            position: 'relative',
+            boxSizing: 'border-box',
+            boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+            overflow: 'hidden'
+          }}
+        >
+          {/* スライドする丸いツマミ（opacity: 0.6 を追加して40%透明に設定） */}
+          <div style={{
+            position: 'absolute',
+            top: '15px',
+            left: isTokenActive ? '15px' : 'calc(100% - 80px)',
+            width: '50px',
+            height: '50px',
+            backgroundColor: '#fcfbf8',
+            borderRadius: '50%',
+            boxShadow: '0 2px 6px rgba(14, 9, 9, 0.3)',
+            transition: 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+            opacity: 0.5
+          }} />
+        </div>
+
+        {/* 右側 1/5：コンパクトなリセットボタン */}
+        <button
+          onClick={handleResetAll}
+          style={{
+            flex: 1,
+            height: '75px',
+            fontSize: '32px',
+            color: '#d32f2f',
+            backgroundColor: 'transparent',
+            border: '2px solid #ef9a9a',
+            borderRadius: '24px',
+            cursor: 'pointer',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            transition: 'all 0.2s',
+            padding: 0
+          }}
+          title="リセット"
+        >
+          🔄
+        </button>
+
+      </div>
 
     </div>
   );

@@ -53,13 +53,15 @@ export default function Player() {
 
   const fetchLogs = () => {
     setLoading(true);
-    fetch('/api/players')
+    fetch('/api/players', {
+      headers: {
+        'X-API-KEY': process.env.NEXT_PUBLIC_API_KEY || '', // 👈 追加
+      },
+    })
       .then(res => res.json())
       .then(resData => {
         if (resData.error) throw new Error(resData.error);
-        // 空白行をフィルター（削除されたデータ行への対応）
         const activeLogs = (resData.data || []).filter((l: PlayerLog) => l.date || l.opponent || l.summary);
-        // 配列を反転させて、新しく追加された行（直近の対戦記録）を最上部にする
         setLogs(activeLogs.reverse()); 
         setLoading(false);
       })
@@ -67,7 +69,12 @@ export default function Player() {
   };
 
   const fetchEvents = () => {
-    fetch('/api/players?type=events')
+    fetch('/api/players?type=events', {
+      headers: {
+        'X-API-KEY': process.env.NEXT_PUBLIC_API_KEY || '', // 👈 追加
+      },
+      credentials: 'include', // 👈 ここを追加
+    })
       .then(res => res.json())
       .then(resData => {
         if (!resData.error) {
@@ -103,8 +110,12 @@ export default function Player() {
       const decoratedMatchType = decorateMatchType(regMatchType);
       const res = await fetch('/api/players', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-KEY': process.env.NEXT_PUBLIC_API_KEY || '', // 👈 追加
+        },
         body: JSON.stringify({ date: regDate.replace(/-/g, '/'), matchType: decoratedMatchType, opponent: regOpponent.trim(), summary: regSummary.trim(), note: regNote.trim() }),
+        credentials: 'include', // 👈 ここを追加
       });
       if (res.ok) {
         setRegOpponent(''); setRegSummary(''); setRegNote('');
@@ -121,8 +132,12 @@ export default function Player() {
     try {
       const res = await fetch('/api/players', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-KEY': process.env.NEXT_PUBLIC_API_KEY || '', // 👈 追加
+        },
         body: JSON.stringify({ targetType: 'event', date: newEventDate.replace(/-/g, '/'), eventName: newEventName.trim() }),
+        credentials: 'include', // 👈 ここを追加
       });
       if (res.ok) { setNewEventName(''); fetchEvents(); }
     } catch { alert('通信エラー'); } finally { setIsEventSubmitting(false); }
@@ -139,8 +154,12 @@ export default function Player() {
       const decoratedLog = { ...editingLog, matchType: decorateMatchType(editingLog.matchType) };
       const res = await fetch('/api/players', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-KEY': process.env.NEXT_PUBLIC_API_KEY || '', // 👈 追加
+        },
         body: JSON.stringify({ ...decoratedLog, date: decoratedLog.date.replace(/-/g, '/') }),
+        credentials: 'include', // 👈 ここを追加
       });
       if (res.ok) {
         setEditingLog(null);
@@ -158,8 +177,12 @@ export default function Player() {
     try {
       const res = await fetch('/api/players', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-KEY': process.env.NEXT_PUBLIC_API_KEY || '', // 👈 追加
+        },
         body: JSON.stringify({ targetType: 'event', ...editingEvent, date: editingEvent.date.replace(/-/g, '/') }),
+        credentials: 'include', // 👈 ここを追加
       });
       if (res.ok) {
         setEditingEvent(null);
@@ -177,7 +200,13 @@ export default function Player() {
     if (!confirm(message)) return;
 
     try {
-      const res = await fetch(`/api/players?targetType=${targetType}&rowIndex=${rowIndex}`, { method: 'DELETE' });
+      const res = await fetch(`/api/players?targetType=${targetType}&rowIndex=${rowIndex}`, {
+        method: 'DELETE',
+        headers: {
+          'X-API-KEY': process.env.NEXT_PUBLIC_API_KEY || '', // 👈 追加
+        },
+        credentials: 'include', // 👈 ここを追加
+      });
       if (res.ok) {
         alert('削除が完了しました。');
         targetType === 'event' ? fetchEvents() : fetchLogs();
