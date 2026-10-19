@@ -18,9 +18,178 @@ function convertToSigned10BitBinary(val: number): string {
     return num.toString(2).padStart(10, '0');
 }
 
+function padCountFromMod(mod: number): number {
+    return mod === 0 ? 0 : 6 - mod;
+}
+
+function encodeSingleCode(cardIds: string[]): string {
+    if (!cardIds || cardIds.length === 0) return "";
+
+    const cardCounts = new Map<string, number>();
+    for (const id of cardIds) {
+        const trimmed = id.trim();
+        if (!trimmed) continue;
+        cardCounts.set(trimmed, (cardCounts.get(trimmed) || 0) + 1);
+    }
+
+    let decimalChunks = "";
+    cardCounts.forEach((totalCount, cardId) => {
+        let remainingCount = totalCount;
+        while (remainingCount > 0) {
+            const count = Math.min(remainingCount, 4);
+            remainingCount -= count;
+
+            let prefix = "";
+            let type = "";
+            let number = 0;
+
+            let rest = cardId;
+            if (cardId.startsWith("prm")) {
+                prefix = "prm";
+                rest = cardId.substring(3);
+            } else if (cardId.startsWith("ex")) {
+                prefix = "ex";
+                rest = cardId.substring(2);
+            } else if (cardId.startsWith("xp")) {
+                prefix = "xp";
+                rest = cardId.substring(2);
+            } else if (cardId.startsWith("yp")) {
+                prefix = "yp";
+                rest = cardId.substring(2);
+            } else {
+                const firstChar = cardId[0];
+                const expIdx = EXPANSION_CHARS.indexOf(firstChar);
+                if (expIdx !== -1 && expIdx % 10 !== 0) {
+                    prefix = firstChar;
+                    rest = cardId.substring(1);
+                }
+            }
+
+            const dashIdx = rest.lastIndexOf('-');
+            if (dashIdx !== -1) {
+                type = rest.substring(0, dashIdx);
+                number = parseInt(rest.substring(dashIdx + 1), 10) || 1;
+            } else {
+                type = "A";
+                number = 1;
+            }
+
+            let expansionChar = prefix;
+            if (prefix === "ex") expansionChar = "e";
+            else if (prefix === "prm") expansionChar = "p";
+            else if (prefix === "xp") expansionChar = "x";
+            else if (prefix === "yp") expansionChar = "y";
+            else if (prefix === "") expansionChar = "A";
+
+            const expIndex = EXPANSION_CHARS.indexOf(expansionChar);
+            const expansionBase = Math.max(0, expIndex % 10);
+            const typePlus5 = expIndex >= 20;
+            const countPlus5 = (expIndex >= 10 && expIndex < 20) || expIndex >= 30;
+
+            const numStr = number.toString().padStart(2, '0');
+
+            let typeCode = "1";
+            if (type === "A") typeCode = typePlus5 ? "6" : "1";
+            else if (type === "S") typeCode = typePlus5 ? "7" : "2";
+            else if (type === "M") typeCode = typePlus5 ? "8" : "3";
+            else if (type === "D") typeCode = typePlus5 ? "9" : "4";
+
+            const finalD5 = countPlus5 ? (count + 5) : count;
+            const chunk = `${expansionBase}${typeCode}${numStr}${finalD5}`;
+            decimalChunks += chunk;
+        }
+    });
+
+    const j5 = decimalChunks;
+    const j4 = j5.length;
+
+    const fullK6Chunks: string[] = [];
+    for (let c = 1; c <= 100; c++) {
+        const start = c * 3 - 2;
+        if (start < j4 + 3) {
+            const sub = j5.substring(start - 1, Math.min(j5.length, start - 1 + 3));
+            if (sub.length > 0) {
+                const part = parseInt(sub, 10);
+                const signedValue = 500 - part;
+                fullK6Chunks.push(convertToSigned10BitBinary(signedValue));
+            } else {
+                fullK6Chunks.push("");
+            }
+        } else {
+            fullK6Chunks.push("");
+        }
+    }
+
+    const validK6 = fullK6Chunks.filter(Boolean);
+    const k4 = validK6.length * 10;
+    const joinedK6 = validK6.join("");
+    const modK4_6 = k4 % 6;
+    const padZeros = padCountFromMod(modK4_6);
+    const k5 = joinedK6 + "0".repeat(padZeros);
+
+    const fullL6Values: number[] = [];
+    for (let c = 1; c <= 172; c++) {
+        if (c * 6 < k4 + 6) {
+            const start = c * 6 - 5;
+            const part1 = k5.substring(start - 1, start - 1 + 3);
+            const part2 = k5.substring(start - 1 + 3, start - 1 + 3 + 3);
+            const bin2oct1 = parseInt(part1 || "0", 2);
+            const bin2oct2 = parseInt(part2 || "0", 2);
+            fullL6Values.push(bin2oct1 * 8 + bin2oct2);
+        } else {
+            fullL6Values.push(NaN);
+        }
+    }
+
+    let countMod8Is0 = 0;
+    let countLessThan8 = 0;
+
+    for (let i = 0; i < 100; i++) {
+        const val = fullL6Values[i];
+        if (!isNaN(val)) {
+            if (val % 8 === 0) countMod8Is0++;
+            if (val < 8) countLessThan8++;
+        }
+    }
+
+    const firstTerm = (modK4_6 === 0) ? 56 : (modK4_6 + 1) * 8;
+    const sumCounts = countMod8Is0 + countLessThan8;
+    const modPart = ((sumCounts % 8) + 8) % 8;
+    const l4 = firstTerm + 8 - modPart;
+
+    const m4 = BASE64_CHARS[l4 - 1] || "";
+
+    const fullM6Chars: string[] = [];
+    for (let i = 0; i < fullL6Values.length; i++) {
+        const val = fullL6Values[i];
+        if (!isNaN(val)) {
+            const charIdx = val + 1;
+            fullM6Chars.push(BASE64_CHARS[charIdx - 1] || "");
+        }
+    }
+
+    return `KCG-${m4}${fullM6Chars.join("")}`;
+}
+
+export function encodeKcgMulti(mainCards: string[], sideCards: string[]): string {
+    const mainCode = encodeSingleCode(mainCards);
+    const sideCode = sideCards.length > 0 ? encodeSingleCode(sideCards) : "";
+    return sideCode ? `${mainCode}|${sideCode}` : mainCode;
+}
+
 /**
- * 単一のKCGコードまたはスラッシュ区切り文字列をデコードする
+ * APIルートとの互換性を保つためのラッパー関数
  */
+export function encodeKcgMultiWithDebug(mainCards: string[], sideCards: string[]): { mainKcg: string; sideKcg: string; debug: string } {
+    const mainKcg = encodeSingleCode(mainCards);
+    const sideKcg = sideCards.length > 0 ? encodeSingleCode(sideCards) : "";
+    return {
+        mainKcg,
+        sideKcg,
+        debug: ""
+    };
+}
+
 function decodeSingleCode(inputCode: string): string[] {
     if (!inputCode || !inputCode.trim()) return [];
     const cleanCode = inputCode.replace(/\s+/g, '');
@@ -121,135 +290,20 @@ function decodeSingleCode(inputCode: string): string[] {
     }
 }
 
-/**
- * 単一のカードIDリストをエンコードして KCG- 形式にする
- */
-function encodeSingleCode(cardIds: string[]): string {
-    if (!cardIds || cardIds.length === 0) return "";
-
-    const cardCounts = new Map<string, number>();
-    for (const id of cardIds) {
-        const trimmed = id.trim();
-        if (!trimmed) continue;
-        cardCounts.set(trimmed, (cardCounts.get(trimmed) || 0) + 1);
-    }
-
-    let decimalChunks = "";
-    cardCounts.forEach((totalCount, cardId) => {
-        let remainingCount = totalCount;
-        while (remainingCount > 0) {
-            const count = Math.min(remainingCount, 4);
-            remainingCount -= count;
-
-            let prefix = "";
-            let type = "";
-            let number = 0;
-
-            let rest = cardId;
-            if (cardId.startsWith("ex")) { prefix = "ex"; rest = cardId.substring(2); }
-            else if (cardId.startsWith("prm")) { prefix = "prm"; rest = cardId.substring(3); }
-            else if (cardId.startsWith("xp")) { prefix = "xp"; rest = cardId.substring(2); }
-            else if (cardId.startsWith("yp")) { prefix = "yp"; rest = cardId.substring(2); }
-            else {
-                const firstChar = cardId[0];
-                if (/[A-I]/.test(firstChar)) {
-                    prefix = firstChar;
-                    rest = cardId.substring(1);
-                }
-            }
-
-            const dashIdx = rest.lastIndexOf('-');
-            if (dashIdx !== -1) {
-                type = rest.substring(0, dashIdx);
-                number = parseInt(rest.substring(dashIdx + 1), 10) || 1;
-            } else {
-                type = "A";
-                number = 1;
-            }
-
-            let typePlus5 = false;
-            let countPlus5 = false;
-
-            let expansionChar = prefix;
-            if (prefix === "ex") expansionChar = "e";
-            else if (prefix === "prm") expansionChar = "p";
-            else if (prefix === "xp") expansionChar = "x";
-            else if (prefix === "yp") expansionChar = "y";
-            else if (prefix === "") expansionChar = "A";
-
-            const expIndex = EXPANSION_CHARS.indexOf(expansionChar);
-            const expansionBase = Math.max(0, expIndex % 10);
-            if (expIndex >= 20) typePlus5 = true;
-            if (expIndex >= 10 && expIndex < 20) countPlus5 = true;
-            if (expIndex >= 30) countPlus5 = true;
-
-            const numStr = number.toString().padStart(2, '0');
-
-            let typeCode = "1";
-            if (type === "A") typeCode = typePlus5 ? "6" : "1";
-            else if (type === "S") typeCode = typePlus5 ? "7" : "2";
-            else if (type === "M") typeCode = typePlus5 ? "8" : "3";
-            else if (type === "D") typeCode = typePlus5 ? "9" : "4";
-
-            const finalD5 = countPlus5 ? (count + 5) : count;
-            const chunk = `${expansionBase}${typeCode}${numStr}${finalD5}`;
-            decimalChunks += chunk;
-        }
-    });
-
-    let decimalString = decimalChunks;
-    const currentLen = decimalString.length;
-    const targetRem = currentLen % 3;
-    if (targetRem === 1) decimalString += "00";
-    else if (targetRem === 2) decimalString += "0";
-
-    let binaryBuilder = "";
-    for (let i = 0; i < decimalString.length; i += 3) {
-        if (i + 3 > decimalString.length) break;
-        const part = parseInt(decimalString.substring(i, i + 3), 10);
-        const signedValue = 500 - part;
-        binaryBuilder += convertToSigned10BitBinary(signedValue);
-    }
-
-    const quotient = 1;
-    const trimLength = 8 - quotient;
-    binaryBuilder += "0".repeat(trimLength);
-
-    let bodyCode = "";
-    for (let i = 0; i < binaryBuilder.length; i += 6) {
-        const chunk6 = binaryBuilder.substring(i, i + 6).padEnd(6, '0');
-        const val = parseInt(chunk6, 2);
-        bodyCode += BASE64_CHARS[val % BASE64_CHARS.length];
-    }
-
-    const remainder = 0;
-    const headerIndex = (quotient - 1) * 8 + remainder;
-    const headerChar = BASE64_CHARS[headerIndex % BASE64_CHARS.length];
-
-    return `KCG-1${headerChar}${bodyCode}`;
+export function parseKcgMulti(kcgInput: string): { main: string[]; side: string[] } {
+    if (!kcgInput) return { main: [], side: [] };
+    const parts = kcgInput.split('|');
+    const main = parts[0] ? decodeSingleCode(parts[0]) : [];
+    const side = parts[1] ? decodeSingleCode(parts[1]) : [];
+    return { main, side };
 }
 
-/**
- * メインとサイドに分かれたKCGコード（例: KCG-...|KCG-...）を生成する
- */
-export function encodeKcgMulti(mainCards: string[], sideCards: string[]): string {
-    const mainKcg = encodeSingleCode(mainCards);
-    const sideKcg = sideCards.length > 0 ? encodeSingleCode(sideCards) : "";
-    return sideKcg ? `${mainKcg}|${sideKcg}` : mainKcg;
-}
-
-/**
- * 「*side*」を含むデッキデータ文字列をフォーマットする
- */
 export function formatDeckData(mainCards: string[], sideCards: string[]): string {
     const mainStr = mainCards.join('/');
     const sideStr = sideCards.length > 0 ? sideCards.join('/') : "";
     return sideStr ? `${mainStr}/*side*/${sideStr}` : mainStr;
 }
 
-/**
- * デッキデータ文字列（*side* 区切り）をメインとサイドのリストに分解する
- */
 export function parseDeckData(dataString: string): { main: string[]; side: string[] } {
     if (!dataString) return { main: [], side: [] };
     if (!dataString.includes('*side*')) {
@@ -258,16 +312,5 @@ export function parseDeckData(dataString: string): { main: string[]; side: strin
     const parts = dataString.split('*side*');
     const main = parts[0] ? parts[0].split('/').map(s => s.trim()).filter(Boolean) : [];
     const side = parts[1] ? parts[1].split('/').map(s => s.trim()).filter(Boolean) : [];
-    return { main, side };
-}
-
-/**
- * 複数KCGコード（| 区切り）をメインとサイドのリストに分解する
- */
-export function parseKcgMulti(kcgInput: string): { main: string[]; side: string[] } {
-    if (!kcgInput) return { main: [], side: [] };
-    const parts = kcgInput.split('|');
-    const main = parts[0] ? decodeSingleCode(parts[0]) : [];
-    const side = parts[1] ? decodeSingleCode(parts[1]) : [];
     return { main, side };
 }
