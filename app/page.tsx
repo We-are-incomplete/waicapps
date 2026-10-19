@@ -1,4 +1,3 @@
-// app/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -7,6 +6,7 @@ import Tournament from './components/Tournament';
 import Player from './components/Player';
 import Probability from './components/Probability';
 import Minigame from './components/Minigame';
+import CodeConverter from './components/CodeConverter';
 
 export default function HomePage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
@@ -16,13 +16,14 @@ export default function HomePage() {
   const [activeMode, setActiveMode] = useState<number>(1);
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
 
-  // ✨ 改修：各モードに個別のサブアイコン画像（subIcon1～5）を割り当て、暇つぶしモードを追加
+  // ✨ 各モードの定義（ページ6「コード変換」を追加、アイコンに Icon5.png を指定）
   const modes = [
     { id: 1, name: 'トークン', icon: '/Images/subIcon1.png' },
     { id: 2, name: 'トーナメント表', icon: '/Images/subIcon2.png' },
     { id: 3, name: 'プレイヤーデータ', icon: '/Images/subIcon3.png' },
     { id: 4, name: '確率計算', icon: '/Images/subIcon4.png' },
     { id: 5, name: 'ミニゲーム', icon: '/Images/subIcon5.png' },
+    { id: 6, name: 'コード変換', icon: '/Images/subIcon1.png' },
   ];
 
   // 🔄 起動時に現在のクッキーから状態チェック
@@ -156,11 +157,10 @@ export default function HomePage() {
               onClick={() => { setActiveMode(mode.id); setIsMenuOpen(false); }} 
               style={{ display: 'flex', alignItems: 'center', gap: '14px', width: '100%', padding: '12px 14px', border: 'none', borderRadius: '8px', fontSize: '15px', backgroundColor: activeMode === mode.id ? '#e6f0fa' : 'transparent', color: activeMode === mode.id ? '#0070f3' : '#333', fontWeight: activeMode === mode.id ? 'bold' : 'normal', cursor: 'pointer', textAlign: 'left' }}
             >
-              {/* ✨ 修正：各固有アイコンの読み込みと、サイズを 24px × 24px に拡大 */}
               <img 
                 src={mode.icon} 
                 alt="" 
-                style={{ width: '28px', height: '28x', objectFit: 'contain', flexShrink: 0 }} 
+                style={{ width: '28px', height: '28px', objectFit: 'contain', flexShrink: '0' }} 
                 onError={(e) => { (e.target as HTMLElement).style.visibility = 'hidden'; }}
               />
               {mode.name}
@@ -178,6 +178,7 @@ export default function HomePage() {
         {activeMode === 3 && <Player />}
         {activeMode === 4 && <Probability />}
         {activeMode === 5 && <Minigame />}
+        {activeMode === 6 && <CodeConverter />} {/* 👈 追加：コード変換画面の表示 */}
       </main>
     </div>
   );
