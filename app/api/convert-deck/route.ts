@@ -217,20 +217,17 @@ export async function GET(request: NextRequest) {
     const officialMainObj = convertToOfficialLocalStorageFormat(mainCards, idToInternalMap);
     const officialSubObj = convertToOfficialLocalStorageFormat(sideCards, idToInternalMap);
 
-    // 💡 入力されたデッキ名（空欄の場合は「」）を取得
-    const effectiveDeckName = deckNameParam && deckNameParam.trim() !== '' ? deckNameParam.trim() : '';
+    const effectiveDeckName = deckNameParam ? deckNameParam.trim() : '';
 
-    // 💡 ハッシュ内のJSONペイロードに deck_name として含める
     const payloadData = JSON.stringify({ 
       main: officialMainObj, 
       sub: officialSubObj, 
       deck_name: effectiveDeckName 
     });
 
-    // 💡 baseDeckCode は変更しないため404エラーにならない
     const officialUrlWithHash = `https://tcg.kamitsubaki.jp/deck_create/${baseDeckCode}/#${encodeURIComponent(payloadData)}`;
 
-    // 💡 ブックマークレット側でも deck_name をローカルストレージに保存できるように拡張
+    // 💡 deck_name も JSON.stringify でシリアライズして保存するように修正
     const bookmarkletCode = `javascript:(function(){` +
       `try {` +
         `const hash = location.hash.slice(1);` +
@@ -238,7 +235,7 @@ export async function GET(request: NextRequest) {
         `const data = JSON.parse(decodeURIComponent(hash));` +
         `if(data.main){localStorage.setItem('main_card_list', JSON.stringify(data.main));}` +
         `if(data.sub){localStorage.setItem('sub_card_list', JSON.stringify(data.sub));}` +
-        `if(data.deck_name){localStorage.setItem('deck_name', data.deck_name);}` +
+        `if(data.deck_name !== undefined){localStorage.setItem('deck_name', JSON.stringify(data.deck_name));}` +
         `history.replaceState(null, '', '/deck_create/');` +
         `alert('✨ デッキを正常に反映しました！');` +
         `location.reload();` +

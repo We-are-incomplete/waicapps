@@ -6,16 +6,7 @@ export default function CodeConverter() {
   const [inputCode, setInputCode] = useState<string>('');
   const [outputDeckData, setOutputDeckData] = useState<string>('');
   const [outputKcg, setOutputKcg] = useState<string>('');
-  const [outputDebug, setOutputDebug] = useState<string>('');
-  const [officialUrl, setOfficialUrl] = useState<string>('');
-  const [bookmarkletCode, setBookmarkletCode] = useState<string>('');
-  
-  // 💡 deck_name用のステート追加
   const [deckName, setDeckName] = useState<string>('');
-
-  // 💡 キャッシュ・重複防止用ステート
-  const [cachedData, setCachedData] = useState<any>(null);
-  const [lastFetchedInput, setLastFetchedInput] = useState<string>('');
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
@@ -33,12 +24,7 @@ export default function CodeConverter() {
     setInputCode('');
     setOutputDeckData('');
     setOutputKcg('');
-    setOutputDebug('');
-    setOfficialUrl('');
-    setBookmarkletCode('');
     setDeckName('');
-    setCachedData(null);
-    setLastFetchedInput('');
   };
 
   const handleCopy = async (text: string, label: string) => {
@@ -54,16 +40,11 @@ export default function CodeConverter() {
     }
   };
 
-  // 💡 安全策（クラッシュ防止）を施したフェッチ関数
-  const fetchConversionData = async (forceRefresh: boolean = false): Promise<any> => {
+  const fetchConversionData = async (): Promise<any> => {
     const trimmedInput = inputCode.trim();
     if (!trimmedInput) return null;
 
-    // 入力コードとデッキ名が同じでキャッシュがある場合は再利用（効率化・各種変換済みならその形式のみ対応）
-    const effectiveDeckName = deckName.trim() === '' ? '空欄' : deckName.trim();
-    if (!forceRefresh && cachedData && lastFetchedInput === trimmedInput && cachedData.deckNameUsed === effectiveDeckName) {
-      return cachedData;
-    }
+    const effectiveDeckName = deckName.trim();
 
     try {
       const res = await fetch(
@@ -75,7 +56,6 @@ export default function CodeConverter() {
         }
       );
 
-      // JSONパース失敗時のクラッシュを防ぐ安全策
       let data;
       try {
         data = await res.json();
@@ -91,10 +71,7 @@ export default function CodeConverter() {
           );
           if (!forceExecute) return null;
         }
-        const resultWithMeta = { ...data, deckNameUsed: effectiveDeckName };
-        setCachedData(resultWithMeta);
-        setLastFetchedInput(trimmedInput);
-        return resultWithMeta;
+        return data;
       } else {
         alert(`エラー: ${data?.error || 'どの形式にも当てはまらないか、解析に失敗しました。'}`);
         return null;
@@ -105,7 +82,7 @@ export default function CodeConverter() {
     }
   };
 
-  // 💡 変換ボタン：すでに変換が行われている場合はキャッシュ・各種変換結果から高速に反映
+  // 💡 指定された形式（デッキデータ）のみを変換・更新する
   const handleConvertDeckData = async () => {
     const trimmedInput = inputCode.trim();
     if (!trimmedInput) {
@@ -114,25 +91,19 @@ export default function CodeConverter() {
     }
 
     setIsLoading(true);
-    if (!outputDeckData || outputDeckData === '') {
-      setOutputDeckData('変換中...');
-    }
+    setOutputDeckData('変換中...');
 
     const data = await fetchConversionData();
     setIsLoading(false);
 
     if (data) {
-      const type = data.inputType;
-      setOutputDeckData(type === 'deckData' ? '-表示中-' : (data.deckData || ''));
-      setOutputKcg(type === 'kcg' ? '-表示中-' : (data.kcgCode || ''));
-      setOutputDebug(data.debugLog || '');
-      setOfficialUrl(data.officialUrlWithHash || '');
-      setBookmarkletCode(data.bookmarkletCode || '');
+      setOutputDeckData(data.deckData || '');
     } else {
       setOutputDeckData('');
     }
   };
 
+  // 💡 指定された形式（KCGコード）のみを変換・更新する
   const handleConvertKcg = async () => {
     const trimmedInput = inputCode.trim();
     if (!trimmedInput) {
@@ -141,25 +112,19 @@ export default function CodeConverter() {
     }
 
     setIsLoading(true);
-    if (!outputKcg || outputKcg === '') {
-      setOutputKcg('変換中...');
-    }
+    setOutputKcg('変換中...');
 
     const data = await fetchConversionData();
     setIsLoading(false);
 
     if (data) {
-      const type = data.inputType;
-      setOutputDeckData(type === 'deckData' ? '-表示中-' : (data.deckData || ''));
-      setOutputKcg(type === 'kcg' ? '-表示中-' : (data.kcgCode || ''));
-      setOutputDebug(data.debugLog || '');
-      setOfficialUrl(data.officialUrlWithHash || '');
-      setBookmarkletCode(data.bookmarkletCode || '');
+      setOutputKcg(data.kcgCode || '');
     } else {
       setOutputKcg('');
     }
   };
 
+  // 💡 公式コード変換ボタンの要件に応じた遷移・判定処理
   const handleOpenOfficialWithHash = async () => {
     const trimmedInput = inputCode.trim();
     if (!trimmedInput) {
@@ -167,24 +132,36 @@ export default function CodeConverter() {
       return;
     }
 
-    let urlToOpen = officialUrl;
-    // デッキ名が変更されている可能性を考慮して強制リフレッシュ
-    setIsLoading(true);
-    const data = await fetchConversionData(true);
-    setIsLoading(false);
+    // 1. 公式コード（またはURL）の判定
+    const isOfficialUrlOrCode = 
+      trimmedInput.includes('deck_detail/') || 
+      trimmedInput.includes('deck_create/') || 
+      (!trimmedInput.startsWith("KCG-") && !trimmedInput.includes('*side*') && !trimmedInput.includes('/'));
 
-    if (data) {
-      urlToOpen = data.officialUrlWithHash;
-      setOutputDeckData(data.inputType === 'deckData' ? '-表示中-' : (data.deckData || ''));
-      setOutputKcg(data.inputType === 'kcg' ? '-表示中-' : (data.kcgCode || ''));
-      setOutputDebug(data.debugLog || '');
-      setOfficialUrl(data.officialUrlWithHash || '');
-      setBookmarkletCode(data.bookmarkletCode || '');
+    if (isOfficialUrlOrCode) {
+      const codeMatch = trimmedInput.match(/deck_detail\/([^\/]+)/) || trimmedInput.match(/deck_create\/([^\/]+)/);
+      const baseCode = codeMatch ? codeMatch[1] : trimmedInput;
+      window.open(`https://tcg.kamitsubaki.jp/deck_create/${baseCode}/`, '_blank');
+      return;
     }
 
-    if (urlToOpen) {
-      window.open(urlToOpen, '_blank');
+    // 2. デッキデータ または KCGコードの場合（再利用せず毎回APIで新規取得）
+    const isKcg = trimmedInput.startsWith("KCG-");
+    const isDeckData = trimmedInput.includes('*side*') || trimmedInput.includes('/');
+
+    if (isKcg || isDeckData) {
+      setIsLoading(true);
+      const data = await fetchConversionData();
+      setIsLoading(false);
+
+      if (data && data.officialUrlWithHash) {
+        window.open(data.officialUrlWithHash, '_blank');
+      }
+      return;
     }
+
+    // 3. それ以外の場合のエラーメッセージ
+    alert('エラー: 入力されたコードの形式が正しくありません。');
   };
 
   const handleCopyBookmarkletSetup = async () => {
@@ -195,22 +172,12 @@ export default function CodeConverter() {
     }
 
     setIsLoading(true);
-    const data = await fetchConversionData(true);
+    const data = await fetchConversionData();
     setIsLoading(false);
 
-    let codeToCopy = '';
-    if (data) {
-      codeToCopy = data.bookmarkletCode;
-      setOutputDeckData(data.inputType === 'deckData' ? '-表示中-' : (data.deckData || ''));
-      setOutputKcg(data.inputType === 'kcg' ? '-表示中-' : (data.kcgCode || ''));
-      setOutputDebug(data.debugLog || '');
-      setOfficialUrl(data.officialUrlWithHash || '');
-      setBookmarkletCode(data.bookmarkletCode || '');
-    }
-
-    if (codeToCopy) {
+    if (data && data.bookmarkletCode) {
       try {
-        await navigator.clipboard.writeText(codeToCopy);
+        await navigator.clipboard.writeText(data.bookmarkletCode);
         alert(
           `📌 【初回セットアップ手順】\n\n` +
           `1. スマホのブラウザに適当なページをブックマーク登録します。\n` +
@@ -302,14 +269,14 @@ export default function CodeConverter() {
 
       <div style={{ borderBottom: '2px solid #f3f4f6', paddingBottom: '12px' }}></div>
 
-      {/* 💡 公式コード用の2つのボタンの上の1行入力欄（deck_name用） */}
+      {/* デッキ名入力欄 */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
         <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#374151' }}>公式コード(4BcDe6_…)</label>
         <input
           type="text"
           value={deckName}
           onChange={(e) => setDeckName(e.target.value)}
-          placeholder="デッキ名 空欄の場合は「空欄」として扱われます"
+          placeholder="デッキ名 空欄の場合は空文字として扱われます"
           style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '13px', outline: 'none' }}
         />
       </div>
@@ -324,7 +291,7 @@ export default function CodeConverter() {
         </button>
       </div>
 
-      {/* 💡 使い方解説を元に戻しました */}
+      {/* 使い方解説 */}
       <details style={{ backgroundColor: '#f9fafb', padding: '12px', borderRadius: '10px', border: '1px solid #e5e7eb', fontSize: '13px', color: '#374151' }}>
         <summary style={{ fontWeight: 'bold', cursor: 'pointer', outline: 'none' }}>📖 ツールの使い方・解説（タップして展開）</summary>
         <div style={{ marginTop: '8px', lineHeight: '1.6', fontSize: '12px', color: '#4b5563' }}>

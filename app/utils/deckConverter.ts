@@ -44,16 +44,18 @@ function encodeSingleCode(cardIds: string[]): string {
             let number = 0;
 
             let rest = cardId;
-            if (cardId.startsWith("prm")) {
+            const lowerId = cardId.toLowerCase();
+
+            if (lowerId.startsWith("prm")) {
                 prefix = "prm";
                 rest = cardId.substring(3);
-            } else if (cardId.startsWith("ex")) {
+            } else if (lowerId.startsWith("ex")) {
                 prefix = "ex";
                 rest = cardId.substring(2);
-            } else if (cardId.startsWith("xp")) {
+            } else if (lowerId.startsWith("xp")) {
                 prefix = "xp";
                 rest = cardId.substring(2);
-            } else if (cardId.startsWith("yp")) {
+            } else if (lowerId.startsWith("yp")) {
                 prefix = "yp";
                 rest = cardId.substring(2);
             } else {
@@ -177,9 +179,6 @@ export function encodeKcgMulti(mainCards: string[], sideCards: string[]): string
     return sideCode ? `${mainCode}|${sideCode}` : mainCode;
 }
 
-/**
- * APIルートとの互換性を保つためのラッパー関数
- */
 export function encodeKcgMultiWithDebug(mainCards: string[], sideCards: string[]): { mainKcg: string; sideKcg: string; debug: string } {
     const mainKcg = encodeSingleCode(mainCards);
     const sideKcg = sideCards.length > 0 ? encodeSingleCode(sideCards) : "";
@@ -274,11 +273,20 @@ function decodeSingleCode(inputCode: string): string[] {
             if (expansionIndex >= EXPANSION_CHARS.length) continue;
 
             const expansionChar = EXPANSION_CHARS[expansionIndex];
-            const expansion = (expansionChar === 'e') ? "ex" : (expansionChar === 'p') ? "prm" : (expansionChar === 'x') ? "xp" : (expansionChar === 'y') ? "yp" : expansionChar;
+            
+            // 💡 拡張プレフィックスのデコード復元を完全保証
+            let expansion = "";
+            if (expansionIndex === 0) expansion = "ex";
+            else if (expansionIndex === 10) expansion = "prm";
+            else if (expansionIndex === 20) expansion = "xp";
+            else if (expansionIndex === 30) expansion = "yp";
+            else if (expansionIndex >= 1 && expansionIndex <= 9) expansion = ""; // 通常弾（プレフィックスなし、例: A-1）
+            else expansion = expansionChar; // 特殊1文字プレフィックス（J〜R, S〜ア, イ〜コ等）
 
             let numberStr = chunk.substring(2, 4);
             if (numberStr.startsWith("0")) numberStr = numberStr.substring(1);
-            const cardId = `${expansion}${type}-${numberStr}`;
+            
+            const cardId = expansion ? `${expansion}${type}-${numberStr}` : `${type}-${numberStr}`;
 
             for (let j = 0; j < count; j++) {
                 cardIds.push(cardId);
