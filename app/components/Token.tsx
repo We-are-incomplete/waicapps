@@ -1,10 +1,9 @@
-// app/components/Token.tsx
 'use client';
 
 import { useState } from 'react';
 
 export default function Token() {
-  // 初期状態（リセット時に使い回せるよう定義）
+  // 初期状態
   const initialTokens = [
     [false, false, false, false, false],
     [false, false, false, false, false],
@@ -13,18 +12,18 @@ export default function Token() {
     [false, false, false, false, false],
   ];
 
-  // 🪙 トークン用の状態
+  // トークン用の状態
   const [columnsState, setColumnsState] = useState<boolean[][]>(initialTokens);
 
-  // 🎲 サイコロ用の状態
+  // サイコロ用の状態
   const [diceCount, setDiceCount] = useState<number>(1);
   const [diceResults, setDiceResults] = useState<number[]>([]);
   const [isRolling, setIsRolling] = useState<boolean>(false);
 
-  // 🎛️ スライドスイッチ用の状態（初期値を true: ON に設定）
+  // スライドスイッチ用の状態（初期値T）
   const [isTokenActive, setIsTokenActive] = useState<boolean>(true);
 
-  // ✨ 各列（colIndex）に対応するトークン画像のパス定義
+  // トークン画像
   const tokenImages = [
     '/Images/Tokena.png', // 魔力α (colIndex: 0)
     '/Images/Tokenb.png', // 魔力β (colIndex: 1)
@@ -61,7 +60,7 @@ export default function Token() {
     });
   };
 
-  // 🔄 トークンとサイコロの全リセット処理
+  // リセット処理
   const handleResetAll = () => {
     if (window.confirm('トークンとサイコロの状態をすべてリセットしますか？')) {
       setColumnsState(initialTokens);
@@ -74,17 +73,17 @@ export default function Token() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       
-      {/* 🪙 トークンエリア */}
+      {/* トークンエリア */}
       <div style={{ 
         display: 'grid', 
         gridTemplateColumns: '1fr 1fr 1fr 2fr', 
         gap: '8px',
-        backgroundColor: '#fff',
+        backgroundColor: 'rgba(255, 255, 255, 0.85)',
         padding: '16px 8px',
         borderRadius: '16px',
         boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
       }}>
-        {/* 単列セット (旧: 魔力α, 魔力β, 魔力Ω) */}
+        {/*魔力α/β/Ω */}
         {[0, 1, 2].map((colIndex) => (
           <div key={colIndex} style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
             {columnsState[colIndex].map((isOn, btnIndex) => (
@@ -107,7 +106,7 @@ export default function Token() {
           </div>
         ))}
 
-        {/* 2列が1つになったセット (旧: VOL) */}
+        {/* VOL */}
         <div style={{ gridColumn: '4', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <div style={{ display: 'flex', gap: '12px', width: '100%', justifyContent: 'center' }}>
             {[3, 4].map((colIndex) => (
@@ -135,10 +134,16 @@ export default function Token() {
         </div>
       </div>
 
-      {/* 🎲 サイコロエリア */}
+      {/* サイコロエリア */}
       <div style={{ 
-        backgroundColor: '#fff', padding: '16px', borderRadius: '20px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px'
+        backgroundColor: 'rgba(255, 255, 255, 0.85)',
+        padding: '16px', 
+        borderRadius: '20px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.05)', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center', 
+        gap: '14px'
       }}>
         {/* 出目表示 */}
         <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', minHeight: '54px', flexWrap: 'wrap', width: '100%' }}>
@@ -187,10 +192,10 @@ export default function Token() {
         </div>
       </div>
 
-      {/* 🎛️ スライドスイッチ & 🔄 リセットボタン（高さ85px、4:1の比率で横並び） */}
+      {/* LIMITEDスイッチ & リセットボタン */}
       <div style={{ display: 'flex', gap: '8px', width: '100%', alignItems: 'center' }}>
         
-        {/* 左側 4/5：スライドスイッチ */}
+        {/* 左側 4/5：LIMITEDスイッチ */}
         <div 
           onClick={() => setIsTokenActive(!isTokenActive)}
           style={{
@@ -208,11 +213,10 @@ export default function Token() {
             overflow: 'hidden'
           }}
         >
-          {/* スライドする丸いツマミ（opacity: 0.6 を追加して40%透明に設定） */}
           <div style={{
             position: 'absolute',
             top: '15px',
-            left: isTokenActive ? '15px' : 'calc(100% - 80px)',
+            left: isTokenActive ? '15px' : 'calc(100% - 65px)',
             width: '50px',
             height: '50px',
             backgroundColor: '#fcfbf8',
@@ -223,13 +227,13 @@ export default function Token() {
           }} />
         </div>
 
-        {/* 右側 1/5：コンパクトなリセットボタン */}
+        {/* 右側 1/5：リセットボタン */}
         <button
           onClick={handleResetAll}
           style={{
             flex: 1,
             height: '75px',
-            fontSize: '32px',
+            fontSize: '24px',
             color: '#d32f2f',
             backgroundColor: 'transparent',
             border: '2px solid #ef9a9a',
