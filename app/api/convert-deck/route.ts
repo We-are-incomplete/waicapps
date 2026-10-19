@@ -217,8 +217,8 @@ export async function GET(request: NextRequest) {
     const officialMainObj = convertToOfficialLocalStorageFormat(mainCards, idToInternalMap);
     const officialSubObj = convertToOfficialLocalStorageFormat(sideCards, idToInternalMap);
 
-    // 💡 入力されたデッキ名（空欄の場合は「空欄」）を取得
-    const effectiveDeckName = deckNameParam && deckNameParam.trim() !== '' ? deckNameParam.trim() : '空欄';
+    // 💡 入力されたデッキ名（空欄の場合は「」）を取得
+    const effectiveDeckName = deckNameParam && deckNameParam.trim() !== '' ? deckNameParam.trim() : '';
 
     // 💡 ハッシュ内のJSONペイロードに deck_name として含める
     const payloadData = JSON.stringify({ 
