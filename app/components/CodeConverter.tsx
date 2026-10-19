@@ -71,7 +71,7 @@ export default function CodeConverter() {
         `【使い方】\n` +
         `1. この後開く公式のデッキ作成ページで、登録した「デッキ反映ツール」のブックマークをポチッと押すだけです！`
       );
-      window.open('https://tcg.kamitsubaki.jp/deck_edit/', '_blank');
+      window.open('https://tcg.kamitsubaki.jp/deck_create/', '_blank');
     } catch {
       alert('コピーに失敗しました。');
     }
