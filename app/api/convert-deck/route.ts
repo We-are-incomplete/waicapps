@@ -4,7 +4,8 @@ import {
   encodeKcgMultiWithDebug, 
   formatDeckData, 
   parseDeckData, 
-  parseKcgMulti 
+  parseKcgMulti,
+  parseKcgMultiWithDebug
 } from '@/app/utils/deckConverter';
 
 const WARNING_HEADER = { 'X-Usage-Warning': 'This API is for internal use only.' };
@@ -65,13 +66,17 @@ function compareCardIds(idA: string, idB: string): number {
   return getNum(normA) - getNum(normB);
 }
 
-function parseCardsFromHtml(htmlSnippet: string, internalToIdMap: Map<string, string>) {
+function parseCardsFromHtmlWithDebug(htmlSnippet: string, internalToIdMap: Map<string, string>, debugLogs: string[], sectionName: string) {
   const cardLiRegex = /<li class="card"[^>]*data-card="([^"]*)"[^>]*>([\s\S]*?)<\/li>/g;
   const cardIdList: string[] = [];
   const missingCards: any[] = [];
   let match;
 
+  debugLogs.push(`[HTML Parse (${sectionName})] Starting regex match on HTML snippet (length: ${htmlSnippet.length})`);
+
+  let countMatched = 0;
   while ((match = cardLiRegex.exec(htmlSnippet)) !== null) {
+    countMatched++;
     const internalId = match[1];
     const liInner = match[2];
     const imgSrcMatch = liInner.match(/<img[^>]*src="([^"]*)"/);
@@ -79,18 +84,25 @@ function parseCardsFromHtml(htmlSnippet: string, internalToIdMap: Map<string, st
     const countMatch = liInner.match(/<div class="count">([^<]*)<\/div>/);
     const count = countMatch ? parseInt(countMatch[1], 10) : 0;
 
+    debugLogs.push(`-> Found card <li> [${countMatched}]: internalId="${internalId}", count=${count}, imgSrc="${imgSrc}"`);
+
     if (internalId && !isNaN(count)) {
       let cardId = internalToIdMap.get(internalId);
       if (!cardId) {
         const inferredId = extractCardIdFromImgSrc(imgSrc);
         missingCards.push({ internalId, inferredId: inferredId || '不明' });
         cardId = inferredId ? `UNKNOWN(${internalId}:${inferredId})` : `UNKNOWN(${internalId})`;
+        debugLogs.push(`   ⚠️ Warning: internalId "${internalId}" not found in sheet map! Inferred: "${cardId}"`);
+      } else {
+        debugLogs.push(`   ✓ Mapped internalId "${internalId}" -> cardId "${cardId}"`);
       }
       for (let i = 0; i < count; i++) {
         cardIdList.push(cardId);
       }
     }
   }
+
+  debugLogs.push(`[HTML Parse (${sectionName})] Total <li> matched: ${countMatched}, Total cards expanded: ${cardIdList.length}`);
   cardIdList.sort(compareCardIds);
   return { cardIdList, missingCards };
 }
@@ -116,11 +128,9 @@ export async function GET(request: NextRequest) {
   const rawInputCode = searchParams.get('code');
   const deckNameParam = searchParams.get('deckName');
 
-  if (!rawInputCode) {
-    return NextResponse.json({ error: 'Deck code is required' }, { status: 400, headers: WARNING_HEADER });
-  }
-
-  const inputCode = rawInputCode.trim();
+  const effectiveRawCode = rawInputCode && rawInputCode.trim() ? rawInputCode.trim() : DEFAULT_BASE_CODE;
+  const isDebugMode = effectiveRawCode.startsWith('debug-');
+  const inputCode = isDebugMode ? effectiveRawCode.replace(/^debug-/, '') : effectiveRawCode;
 
   try {
     let mainCards: string[] = [];
@@ -128,16 +138,21 @@ export async function GET(request: NextRequest) {
     let missingCards: any[] = [];
     let inputType: 'kcg' | 'deckData' | 'official' = 'official';
     let baseDeckCode = DEFAULT_BASE_CODE;
+    let debugProcessLog: string[] = [];
+
+    debugProcessLog.push(`[Init] Effective input code: "${inputCode}", isDebugMode: ${isDebugMode}`);
 
     const auth = getGoogleAuth();
     const sheets = google.sheets({ version: 'v4', auth });
     const spreadsheetId = process.env.SPREADSHEET_ID;
 
+    debugProcessLog.push(`[Spreadsheet] Fetching Cardlist sheet...`);
     const sheetRes = await sheets.spreadsheets.values.get({
       spreadsheetId,
       range: 'Cardlist!A:G',
     });
     const rows = sheetRes.data.values || [];
+    debugProcessLog.push(`[Spreadsheet] Fetched ${rows.length} rows from Cardlist.`);
 
     let isListValid = true;
     if (rows.length > 0) {
@@ -162,57 +177,82 @@ export async function GET(request: NextRequest) {
 
     if (inputCode.startsWith("KCG-")) {
       inputType = 'kcg';
-      const parsed = parseKcgMulti(inputCode);
-      mainCards = parsed.main;
-      sideCards = parsed.side;
+      debugProcessLog.push(`[Format Detection] Detected as KCG format.`);
+      const parsedDebug = parseKcgMultiWithDebug(inputCode);
+      mainCards = parsedDebug.main;
+      sideCards = parsedDebug.side;
+      debugProcessLog.push(...parsedDebug.debugLogs);
       mainCards.sort(compareCardIds);
       sideCards.sort(compareCardIds);
     } else if (inputCode.includes('*side*') || (inputCode.includes('/') && !inputCode.includes('http'))) {
       inputType = 'deckData';
+      debugProcessLog.push(`[Format Detection] Detected as DeckData format.`);
       const parsed = parseDeckData(inputCode);
       mainCards = parsed.main;
       sideCards = parsed.side;
+      debugProcessLog.push(`[DeckData Parse] Main cards: ${mainCards.length}, Side cards: ${sideCards.length}`);
       mainCards.sort(compareCardIds);
       sideCards.sort(compareCardIds);
     } else {
       inputType = 'official';
+      debugProcessLog.push(`[Format Detection] Detected as Official Deck URL/Code format.`);
+      
       const codeMatch = inputCode.match(/deck_detail\/([^\/]+)/) || inputCode.match(/deck_create\/([^\/]+)/);
-      if (codeMatch) baseDeckCode = codeMatch[1];
+      if (codeMatch) {
+        baseDeckCode = codeMatch[1];
+      } else {
+        baseDeckCode = inputCode;
+      }
 
       const targetUrl = `https://tcg.kamitsubaki.jp/deck_detail/${baseDeckCode}/`;
+      debugProcessLog.push(`[Official Parse] Target URL: ${targetUrl}`);
+
       const res = await fetch(targetUrl, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         },
       });
       
+      debugProcessLog.push(`[Official Parse] Fetch status: ${res.status} ${res.statusText}`);
       if (!res.ok) {
+        debugProcessLog.push(`-> Error: Official site fetch failed with status ${res.status}`);
         return NextResponse.json({ error: '指定された公式デッキが見つかりません。' }, { status: 404, headers: WARNING_HEADER });
       }
 
       const html = await res.text();
+      debugProcessLog.push(`[Official Parse] Fetched HTML length: ${html.length} chars`);
+
       let mainHtml = html;
       let sideHtml = "";
       const sideKeywordIndex = html.indexOf('サイド');
+      debugProcessLog.push(`[Official Parse] 'サイド' keyword found at index: ${sideKeywordIndex}`);
+
       if (sideKeywordIndex !== -1) {
         mainHtml = html.substring(0, sideKeywordIndex);
         sideHtml = html.substring(sideKeywordIndex);
       }
 
-      const mainResult = parseCardsFromHtml(mainHtml, internalToIdMap);
-      const sideResult = parseCardsFromHtml(sideHtml, internalToIdMap);
+      const mainResult = parseCardsFromHtmlWithDebug(mainHtml, internalToIdMap, debugProcessLog, "MAIN");
+      const sideResult = parseCardsFromHtmlWithDebug(sideHtml, internalToIdMap, debugProcessLog, "SIDE");
+
       mainCards = mainResult.cardIdList;
       sideCards = sideResult.cardIdList;
       missingCards = [...mainResult.missingCards, ...sideResult.missingCards];
-    }
-
-    if (mainCards.length === 0 && sideCards.length === 0) {
-      return NextResponse.json({ error: '有効なカード情報を抽出できませんでした。' }, { status: 400, headers: WARNING_HEADER });
+      // 💡 タイポを修正 (SideCardsCount -> sideCards.length)
+      debugProcessLog.push(`[Official Parse] Final extracted - Main: ${mainCards.length}, Side: ${sideCards.length}, Missing: ${missingCards.length}`);
     }
 
     const deckDataString = formatDeckData(mainCards, sideCards);
     const kcgDebugResult = encodeKcgMultiWithDebug(mainCards, sideCards);
     const kcgCode = kcgDebugResult.sideKcg ? `${kcgDebugResult.mainKcg}|${kcgDebugResult.sideKcg}` : kcgDebugResult.mainKcg;
+
+    const finalDeckDataOutput = isDebugMode
+      ? `=== [DEBUG MODE] 公式パース＆変換プロセスログ ===\n\n` + debugProcessLog.join('\n') + `\n\n=== 抽出されたカード一覧 ===\nMain: ${JSON.stringify(mainCards)}\nSide: ${JSON.stringify(sideCards)}\nMissing: ${JSON.stringify(missingCards)}`
+      : deckDataString;
+
+    const finalKcgOutput = isDebugMode
+      ? `=== [DEBUG MODE] 再エンコード結果 ===\nMain KCG: ${kcgDebugResult.mainKcg}\nSide KCG: ${kcgDebugResult.sideKcg}`
+      : kcgCode;
 
     const officialMainObj = convertToOfficialLocalStorageFormat(mainCards, idToInternalMap);
     const officialSubObj = convertToOfficialLocalStorageFormat(sideCards, idToInternalMap);
@@ -227,28 +267,29 @@ export async function GET(request: NextRequest) {
 
     const officialUrlWithHash = `https://tcg.kamitsubaki.jp/deck_create/${baseDeckCode}/#${encodeURIComponent(payloadData)}`;
 
-    // 💡 deck_name も JSON.stringify でシリアライズして保存するように修正
     const bookmarkletCode = `javascript:(function(){` +
       `try {` +
         `const hash = location.hash.slice(1);` +
-        `if(!hash){alert('❌ 反映するデータがありません。');return;}` +
+        `if(!hash){alert('❌ エラー: ハッシュ（データ）が見つかりません。');return;}` +
         `const data = JSON.parse(decodeURIComponent(hash));` +
         `if(data.main){localStorage.setItem('main_card_list', JSON.stringify(data.main));}` +
         `if(data.sub){localStorage.setItem('sub_card_list', JSON.stringify(data.sub));}` +
-        `if(data.deck_name !== undefined){localStorage.setItem('deck_name', JSON.stringify(data.deck_name));}` +
+        `if(data.deck_name !== undefined){` +
+          `localStorage.setItem('deck_name', data.deck_name);` +
+        `}` +
         `history.replaceState(null, '', '/deck_create/');` +
         `alert('✨ デッキを正常に反映しました！');` +
         `location.reload();` +
       `} catch(e) {` +
-        `alert('❌ エラー: データの読み込みに失敗しました。');` +
+        `alert('❌ エラー詳細: ' + (e.message || e));` +
       `}` +
       `})();`;
 
     return NextResponse.json({ 
       success: true, 
       inputType, 
-      deckData: deckDataString,
-      kcgCode, 
+      deckData: finalDeckDataOutput,
+      kcgCode: finalKcgOutput, 
       officialUrlWithHash, 
       bookmarkletCode,    
       isListValid,

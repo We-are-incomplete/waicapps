@@ -8,7 +8,11 @@ export default function CodeConverter() {
   const [outputKcg, setOutputKcg] = useState<string>('');
   const [deckName, setDeckName] = useState<string>('');
 
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  // 💡 ① ボタンごとのローディング状態を独立させる
+  const [isLoadingDeck, setIsLoadingDeck] = useState<boolean>(false);
+  const [isLoadingKcg, setIsLoadingKcg] = useState<boolean>(false);
+  const [isLoadingOfficial, setIsLoadingOfficial] = useState<boolean>(false);
+
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
   const handlePaste = async () => {
@@ -40,10 +44,8 @@ export default function CodeConverter() {
     }
   };
 
-  const fetchConversionData = async (): Promise<any> => {
-    const trimmedInput = inputCode.trim();
-    if (!trimmedInput) return null;
-
+  const fetchConversionData = async (codeToFetch: string): Promise<any> => {
+    const trimmedInput = codeToFetch.trim();
     const effectiveDeckName = deckName.trim();
 
     try {
@@ -59,7 +61,7 @@ export default function CodeConverter() {
       let data;
       try {
         data = await res.json();
-      } catch (parseErr) {
+      } catch {
         alert('サーバーからの応答の解析に失敗しました。');
         return null;
       }
@@ -76,13 +78,13 @@ export default function CodeConverter() {
         alert(`エラー: ${data?.error || 'どの形式にも当てはまらないか、解析に失敗しました。'}`);
         return null;
       }
-    } catch (err: any) {
+    } catch {
       alert('エラー: どの形式にも当てはまらないか、通信に失敗しました。');
       return null;
     }
   };
 
-  // 💡 指定された形式（デッキデータ）のみを変換・更新する
+  // デッキデータ変換
   const handleConvertDeckData = async () => {
     const trimmedInput = inputCode.trim();
     if (!trimmedInput) {
@@ -90,11 +92,11 @@ export default function CodeConverter() {
       return;
     }
 
-    setIsLoading(true);
+    setIsLoadingDeck(true);
     setOutputDeckData('変換中...');
 
-    const data = await fetchConversionData();
-    setIsLoading(false);
+    const data = await fetchConversionData(trimmedInput);
+    setIsLoadingDeck(false);
 
     if (data) {
       setOutputDeckData(data.deckData || '');
@@ -103,7 +105,7 @@ export default function CodeConverter() {
     }
   };
 
-  // 💡 指定された形式（KCGコード）のみを変換・更新する
+  // KCGコード変換
   const handleConvertKcg = async () => {
     const trimmedInput = inputCode.trim();
     if (!trimmedInput) {
@@ -111,11 +113,11 @@ export default function CodeConverter() {
       return;
     }
 
-    setIsLoading(true);
+    setIsLoadingKcg(true);
     setOutputKcg('変換中...');
 
-    const data = await fetchConversionData();
-    setIsLoading(false);
+    const data = await fetchConversionData(trimmedInput);
+    setIsLoadingKcg(false);
 
     if (data) {
       setOutputKcg(data.kcgCode || '');
@@ -124,15 +126,22 @@ export default function CodeConverter() {
     }
   };
 
-  // 💡 公式コード変換ボタンの要件に応じた遷移・判定処理
+  // ③ 公式コード変換&遷移（入力が空のときのポップアップ・キャンセル処理対応）
   const handleOpenOfficialWithHash = async () => {
     const trimmedInput = inputCode.trim();
+
     if (!trimmedInput) {
-      alert('入力コードが入力されていません。');
+      const confirmEmpty = window.confirm(
+        "⚠️ 入力コードが入力されていません。\n\nハッシュ無しの空のデッキ作成ページに遷移しますか？"
+      );
+      if (!confirmEmpty) {
+        return; // キャンセルされたら何もしない
+      }
+      // 空の場合はハッシュ無しで遷移
+      window.open('https://tcg.kamitsubaki.jp/deck_create/', '_blank');
       return;
     }
 
-    // 1. 公式コード（またはURL）の判定
     const isOfficialUrlOrCode = 
       trimmedInput.includes('deck_detail/') || 
       trimmedInput.includes('deck_create/') || 
@@ -145,14 +154,13 @@ export default function CodeConverter() {
       return;
     }
 
-    // 2. デッキデータ または KCGコードの場合（再利用せず毎回APIで新規取得）
     const isKcg = trimmedInput.startsWith("KCG-");
     const isDeckData = trimmedInput.includes('*side*') || trimmedInput.includes('/');
 
     if (isKcg || isDeckData) {
-      setIsLoading(true);
-      const data = await fetchConversionData();
-      setIsLoading(false);
+      setIsLoadingOfficial(true);
+      const data = await fetchConversionData(trimmedInput);
+      setIsLoadingOfficial(false);
 
       if (data && data.officialUrlWithHash) {
         window.open(data.officialUrlWithHash, '_blank');
@@ -160,20 +168,16 @@ export default function CodeConverter() {
       return;
     }
 
-    // 3. それ以外の場合のエラーメッセージ
     alert('エラー: 入力されたコードの形式が正しくありません。');
   };
 
+  // ② ブックマークレットコピーボタン（入力が空でもキャンセルせずコピー可能に）
   const handleCopyBookmarkletSetup = async () => {
     const trimmedInput = inputCode.trim();
-    if (!trimmedInput) {
-      alert('入力コードが入力されていません。');
-      return;
-    }
+    // 入力がない場合は空またはデフォルトとしてAPIを叩く
+    const targetCode = trimmedInput || "YmI5N2_ZlNmMt_OWU1NS";
 
-    setIsLoading(true);
-    const data = await fetchConversionData();
-    setIsLoading(false);
+    const data = await fetchConversionData(targetCode);
 
     if (data && data.bookmarkletCode) {
       try {
@@ -242,8 +246,8 @@ export default function CodeConverter() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4b5563' }}>デッキデータ（AA-1/…）</label>
             <div style={{ display: 'flex', gap: '6px' }}>
-              <button onClick={handleConvertDeckData} disabled={isLoading} style={{ padding: '3px 8px', fontSize: '11px', cursor: 'pointer', borderRadius: '6px', border: '1px solid #2563eb', backgroundColor: '#eff6ff', color: '#2563eb', fontWeight: '600' }}>
-                {isLoading ? '変換中...' : '⚡ 変換'}
+              <button onClick={handleConvertDeckData} disabled={isLoadingDeck} style={{ padding: '3px 8px', fontSize: '11px', cursor: 'pointer', borderRadius: '6px', border: '1px solid #2563eb', backgroundColor: '#eff6ff', color: '#2563eb', fontWeight: '600' }}>
+                {isLoadingDeck ? '変換中...' : '⚡ 変換'}
               </button>
               <button onClick={() => handleCopy(outputDeckData, 'デッキデータ')} style={{ padding: '3px 8px', fontSize: '11px', cursor: 'pointer', borderRadius: '6px', border: '1px solid #d1d5db', backgroundColor: '#fff', fontWeight: '600' }}>📋 コピー</button>
             </div>
@@ -256,8 +260,8 @@ export default function CodeConverter() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4b5563' }}>KCGコード（KCG-…）</label>
             <div style={{ display: 'flex', gap: '6px' }}>
-              <button onClick={handleConvertKcg} disabled={isLoading} style={{ padding: '3px 8px', fontSize: '11px', cursor: 'pointer', borderRadius: '6px', border: '1px solid #2563eb', backgroundColor: '#eff6ff', color: '#2563eb', fontWeight: '600' }}>
-                {isLoading ? '変換中...' : '⚡ 変換'}
+              <button onClick={handleConvertKcg} disabled={isLoadingKcg} style={{ padding: '3px 8px', fontSize: '11px', cursor: 'pointer', borderRadius: '6px', border: '1px solid #2563eb', backgroundColor: '#eff6ff', color: '#2563eb', fontWeight: '600' }}>
+                {isLoadingKcg ? '変換中...' : '⚡ 変換'}
               </button>
               <button onClick={() => handleCopy(outputKcg, 'KCGコード')} style={{ padding: '3px 8px', fontSize: '11px', cursor: 'pointer', borderRadius: '6px', border: '1px solid #d1d5db', backgroundColor: '#fff', fontWeight: '600' }}>📋 コピー</button>
             </div>
@@ -283,11 +287,11 @@ export default function CodeConverter() {
 
       {/* 連携ボタン */}
       <div style={{ display: 'flex', gap: '10px', backgroundColor: '#f0fdf4', padding: '14px', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
-        <button onClick={handleOpenOfficialWithHash} disabled={isLoading} style={{ flex: 1, padding: '10px 8px', borderRadius: '8px', border: 'none', backgroundColor: '#059669', color: '#fff', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold', textAlign: 'center' }}>
-          {isLoading ? '変換処理中...' : '公式コード変換&遷移'}
+        <button onClick={handleOpenOfficialWithHash} disabled={isLoadingOfficial} style={{ flex: 1, padding: '10px 8px', borderRadius: '8px', border: 'none', backgroundColor: '#059669', color: '#fff', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold', textAlign: 'center' }}>
+          {isLoadingOfficial ? '変換処理中...' : '公式コード変換&遷移'}
         </button>
-        <button onClick={handleCopyBookmarkletSetup} disabled={isLoading} style={{ flex: 1, padding: '10px 8px', borderRadius: '8px', border: '1px solid #d1d5db', backgroundColor: '#ffffff', color: '#4b5563', cursor: 'pointer', fontSize: '12px', fontWeight: '600', textAlign: 'center' }}>
-          {isLoading ? '処理中...' : 'ブックマークコード コピー'}
+        <button onClick={handleCopyBookmarkletSetup} style={{ flex: 1, padding: '10px 8px', borderRadius: '8px', border: '1px solid #d1d5db', backgroundColor: '#ffffff', color: '#4b5563', cursor: 'pointer', fontSize: '12px', fontWeight: '600', textAlign: 'center' }}>
+          ブックマークコード コピー
         </button>
       </div>
 
@@ -297,8 +301,8 @@ export default function CodeConverter() {
         <div style={{ marginTop: '8px', lineHeight: '1.6', fontSize: '12px', color: '#4b5563' }}>
           <p><b>デッキデータ or KCGコードへの変換</b><br/>入力欄にコードを貼り付け、各出力欄の「変換」ボタンを押すと、それぞれの形式に変換されます。</p>
           <p><br/>--------------</p>
-          <p><br/><b>公式データへの変換（準備）</b><br/>「ブックマークコードコピー」を押し、スマホのブラウザで適当なページをブックマーク。<br/>それを編集して、URLの部分にコピーしたコードを貼り付けます。名前は何でもいいです。</p>
-          <p><br/><b>公式データへの変換（実行）</b><br/>デッキデータ or KCGコードをこのページの入力欄に入力した後、「コード変換&遷移」を押してください。<br/>数秒立つとメッセージが表示され、公式のデッキページに移動します。<br/>そこで準備したブックマークをタップすると、クリップボードを読み取ってデッキが反映されます。</p>
+          <p><br/><b>公式データへの変換（準備）</b><br/>【STEP1】「ブックマークコードコピー」を押し、スマホの標準ブラウザで適当なページをブックマークしてください。<br/>【STEP2】そのブックマークを編集して、URLの部分にコピーしたコードを貼り付けます。名前は何でもいいですが、入力しやすくしておいてください。</p>
+          <p><br/><b>公式データへの変換（実行-PC）</b><br/>【STEP1】デッキデータ or KCGコードを入力した後、「コード変換&遷移」を押してください。<br/>数秒立つとメッセージが表示され、公式のデッキページに移動します。<br/>【STEP2】移動した公式ページで、準備で登録したブックマークを呼び出してください。ページが更新されて、デッキが反映されます。<br/><br/><b>公式データへの変換（実行-スマホ）</b><br/>【STEP1】デッキデータ or KCGコードを入力した後、「コード変換&遷移」を押してください。公式ページに移動します。<br/>【STEP2】移動した公式ページで、検索欄に準備で登録したブックマークの名前を入力してください(<b>Enterや決定は押さないで！</b>)。<br/>【STEP3】候補にブックマークが出てくると思うので、それをタップしてください。ページが更新されて、デッキが反映されます。</p>
         </div>
       </details>
 
